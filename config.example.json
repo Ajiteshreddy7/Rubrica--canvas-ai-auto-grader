@@ -1,0 +1,15 @@
+{
+    "canvas": {
+        "base_url": "https://your-institution.instructure.com/",
+        "api_token": "YOUR_CANVAS_API_TOKEN_HERE",
+        "course_id": "YOUR_COURSE_ID"
+    },
+    "grading": {
+        "clone_path": "assignments",
+        "cleanup_days": 7,
+        "assignment_filter": "Hands-on"
+    },
+    "daemon": {
+        "poll_interval_seconds": 300
+    }
+}

@@ -1,0 +1,39 @@
+# Sensitive configuration
+config.json
+
+# Cloned student repositories and submissions
+assignments/
+submissions/
+
+# State files
+queue.json
+queue_backup.json
+status.json
+
+# Mock data helpers
+create_mock_queue.py
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.venv
+venv/
+
+# Logs
+*.log
+daemon.log
+
+# OS
+.DS_Store
+Thumbs.db

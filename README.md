@@ -302,8 +302,8 @@ rubrica/
 ### Installation
 
 ```bash
-git clone https://github.com/yourusername/rubrica.git
-cd rubrica
+git clone https://github.com/Ajiteshreddy7/Rubrica--canvas-ai-auto-grader.git
+cd Rubrica--canvas-ai-auto-grader
 
 # Create and activate a conda environment (recommended)
 conda create -n grader python=3.10 -y

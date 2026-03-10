@@ -1,9 +1,8 @@
-# 🤖 Canvas AI Auto-Grader
+# Canvas AI Auto-Grader
 
-> **Autonomous AI-powered grading system that transforms hours of manual grading into minutes of intelligent automation**
+**An autonomous grading pipeline that polls Canvas LMS, clones student GitHub repos, and grades submissions with AI -- turning hours of manual review into minutes.**
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![GitHub Copilot](https://img.shields.io/badge/Powered%20by-GitHub%20Copilot-orange)](https://github.com/features/copilot)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Claude Sonnet 4.5](https://img.shields.io/badge/AI-Claude%20Sonnet%204.5-blueviolet)](https://www.anthropic.com/claude)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -13,449 +12,418 @@
 
 ---
 
-## 🎯 What Does It Do?
+## The Problem
 
-Imagine this: **35 student submissions graded in under 2 hours** with detailed, constructive feedback on each one—while you focus on teaching. That's the power of Canvas AI Auto-Grader.
+Grading programming assignments is repetitive, time-consuming, and inconsistent. A TA grading 30 GitHub submissions manually spends ~7 hours reading code, writing feedback, and entering scores -- and the 30th student gets different quality feedback than the 1st.
 
-This intelligent agent:
-- 📥 **Automatically fetches** assignments from Canvas LMS
-- 🔍 **Clones and analyzes** student GitHub repositories
-- 🧠 **Uses Claude Sonnet 4.5** to provide thoughtful code reviews
-- ✍️ **Generates detailed feedback** with strengths and improvement suggestions
-- 🔄 **Handles failures gracefully** with smart retry logic
-- 📊 **Tracks progress** in real-time with a beautiful dashboard
+## The Solution
 
-**Result:** From 63% to **85% success rate** with zero human intervention for common issues.
+This system runs as a background daemon that:
+
+1. **Polls Canvas** for new submissions across all matching assignments
+2. **Clones GitHub repos** using authenticated GitHub CLI
+3. **Grades with Claude Sonnet 4.5** via GitHub Copilot SDK, applying per-assignment rubrics
+4. **Saves structured feedback** as markdown with YAML frontmatter
+5. **Posts grades back to Canvas** with comments (optional)
+6. **Generates analytics** -- score distributions, student rankings, common mistake patterns
+
+The entire pipeline is fault-tolerant with automatic retries, deduplication, and graceful shutdown.
 
 ---
 
-## ✨ Key Features
-
-### 🚀 Fully Autonomous Operation
-Set it and forget it. The daemon polls Canvas every 5 minutes, automatically processing new submissions as they come in.
+## Architecture
 
 ```
-🤖 Canvas Auto-Grading Daemon
-Mode: AI (Copilot Claude Sonnet 4.5)
-
-🔄 Syncing assignments (filter: 'Hands-on')...
-✓ Found 8 matching assignments
-
-📥 Polling for new submissions...
-✓ Added 3 new submissions to queue
-
-⚙️  Processing: Jakob Olsen - Hands-on L2: Basics of GitHub
-✅ Graded: Jakob Olsen (Score: 1.0)
-
-Completed: 35  |  Failed: 6  |  Pending: 2
+                          Canvas LMS API
+                               |
+                    +----------+----------+
+                    |                     |
+              Fetch Assignments    Fetch Submissions
+                    |                     |
+                    v                     v
+             +-------------+    +-----------------+
+             | assignment  |    |  FIFO Queue     |
+             | .json +     |    |  (queue.json)   |
+             | rubric.md   |    +--------+--------+
+             +-------------+             |
+                                         v
+                                 +-------+--------+
+                                 |  Clone Repo    |
+                                 |  (GitHub CLI)  |
+                                 +-------+--------+
+                                         |
+                                         v
+                                 +-------+--------+
+                                 | Claude Sonnet  |
+                                 | 4.5 via        |
+                                 | Copilot SDK    |
+                                 +-------+--------+
+                                         |
+                          +--------------+--------------+
+                          |              |              |
+                          v              v              v
+                     grading.md    Post Grade     Analytics
+                     (feedback)    to Canvas      Dashboard
 ```
 
-### 🧠 Intelligent AI Grading
-Powered by **Claude Sonnet 4.5** via GitHub Copilot, the agent doesn't just check boxes—it actually reads and understands code.
+### Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **FIFO queue persisted to JSON** | Survives crashes; no database dependency; human-readable state |
+| **Per-assignment rubrics from Canvas API** | Rubric criteria pulled automatically, not hardcoded |
+| **Prompt-driven grading (markdown files)** | Instructors customize AI behavior without touching Python |
+| **Pydantic config validation** | Fail fast on misconfiguration instead of silent errors at runtime |
+| **Async daemon with graceful shutdown** | SIGINT/SIGTERM handlers finish current grading before exit |
+| **Thread-locked queue operations** | Prevents race conditions during concurrent file access |
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Why |
+|-------|-----------|-----|
+| AI Engine | Claude Sonnet 4.5 (GitHub Copilot SDK) | Best-in-class code understanding and feedback generation |
+| LMS Integration | Canvas REST API (paginated) | Full assignment/submission/rubric lifecycle management |
+| Repo Cloning | GitHub CLI (`gh`) | Handles auth, private repos, and rate limiting |
+| Config | Pydantic v2 models | Type-safe validation with clear error messages |
+| CLI | Click + Rich | Professional terminal UX with colored output and tables |
+| Queue | JSON file + threading.Lock | Zero-dependency, crash-recoverable persistence |
+| Analytics | Chart.js (embedded HTML) | Self-contained reports, no server needed |
+| Logging | RotatingFileHandler | 5MB rotation, 5 backups, structured log format |
+
+---
+
+## Features
+
+### Autonomous Daemon
+
+The daemon runs continuously, polling Canvas at configurable intervals:
+
+```
+$ python cli.py run
+
+Canvas Auto-Grading Daemon
+Mode: AI
+
+>> Syncing assignments (filter: '['Hands-on', 'Assignment']')...
+[OK] Found 11 matching assignments
+
+>> Polling for new submissions...
+[OK] Added 161 new submissions to queue
+
+> Processing: Jack Karegeannes - Assignment #1 - Virtualization and Containerization
+  > Cloning repository...
+  [OK] Cloned successfully
+  > Grading...
+  [OK] Graded: 3.0/3.0
+```
+
+### CLI Interface
+
+```
+$ python cli.py --help
+
+Commands:
+  run        Start the grading daemon
+  grade      Interactive one-shot grading (select assignments & students)
+  status     Show queue status (pending/completed/failed)
+  analytics  Score distributions, student rankings, HTML reports
+  export     Export all grades to CSV
+  retry      Retry eligible failed submissions
+  fix-queue  Repair stuck queue items after a crash
+```
+
+**Status dashboard:**
+```
+$ python cli.py status --detailed
+
++--------------------- Queue Status ----------------------+
+| Pending:    75                                          |
+| Processing: 0                                           |
+| Completed:  43                                          |
+| Failed:     5                                           |
++---------------------------------------------------------+
+```
+
+### Interactive Grading
+
+The `grade` command lets you pick specific assignments and students to grade in one shot -- no daemon required:
+
+```
+$ python cli.py grade
+
+Canvas Auto-Grader - Interactive Grade
+Mode: Mock
+
+Fetching assignments from Canvas...
+
+Assignments:
+  [1] Assignment #1 - Virtualization and Containerization  (ID: 2772289, 3.0 pts)
+  [2] Assignment #2 - Big Data Platforms  (ID: 2772290, 3.0 pts)
+  [0] All
+
+Select (comma-separated numbers, or 0 for all): 1
+
+Students for 'Assignment #1 - Virtualization ...' (26 submissions):
+  [1] Alice Smith  (github)
+  [2] Bob Jones    (github)
+  ...
+  [0] All
+
+Select: 0
+Ready to grade 26 submission(s) across 1 assignment(s).
+Proceed? (y/n): y
+```
+
+Or skip the menus entirely with CLI flags:
+
+```bash
+# Grade a specific assignment, all students, real AI, no confirmation
+python cli.py grade -a "Hands-on L6" --all-students --no-mock -y
+```
+
+**Analytics:**
+```
+$ python cli.py analytics
+
++-------------------- Analytics Overview ---------------------+
+| Total Graded:   43                                          |
+| Students:       27                                          |
+| Assignments:    2                                           |
+| Average Score:  100.0%                                      |
+| Pass Rate:      100.0%                                      |
++-------------------------------------------------------------+
+
+Submission Types: github: 34 | pdf: 9
+
+Per-Assignment Statistics:
+| Assignment                         | N  | Avg Score | Avg %  | Pass Rate |
+|------------------------------------+----+-----------+--------+-----------|
+| Assignment #1 - Virtualization ... | 26 | 3.0/3.0   | 100.0% | 100.0%    |
+| Assignment #2 - Big Data ...       | 17 | 3.0/3.0   | 100.0% | 100.0%    |
+```
+
+**HTML report generation:**
+```
+$ python cli.py analytics --html
+HTML report generated: analytics_report.html
+```
+
+Generates a self-contained HTML file with Chart.js visualizations: score distribution histograms, assignment comparison charts, submission type breakdown, sortable student performance table, and feedback pattern analysis.
+
+### AI-Generated Feedback
+
+Each submission produces a `grading.md` file with YAML frontmatter:
 
 ```markdown
-## Your Feedback
+---
+submission_id: 128555151
+student: Jack Karegeannes
+assignment_id: 2772289
+assignment_title: Assignment #1 - Virtualization and Containerization
+score: 3.0
+graded_at: 2026-03-09T16:35:18.276194
+submission_type: github
+submission_url: https://github.com/Karegeannes/Assignment1-Docker-Containers
+---
+# Grading Report
 
-### 🌟 Strengths
+**Assignment:** Assignment #1 - Virtualization and Containerization
+**Score:** 3.0 / 3.0
+
+## Strengths
 - Excellent repository structure with clear file organization
 - Comprehensive README with detailed setup instructions
 - Good use of .gitignore to exclude unnecessary files
 
-### 💡 Suggestions for Growth
+## Suggestions for Growth
 - Consider adding inline comments to explain complex logic
 - Try breaking down large functions into smaller, reusable components
 ```
 
-### 🔄 Bulletproof Retry Logic
-File locks? Network timeouts? No problem. The system automatically retries with smart cleanup.
+### Prompt-Driven Grading
 
-- **WinError 5 (File Locks):** ♾️ Infinite retries with automatic cleanup
-- **Invalid Repos:** ⚠️ Max 2 attempts, then escalate to human
-- **Deduplication:** 🎯 Prevents duplicate processing
-- **Success Rate:** 📈 100% file lock resolution
-
-**Example Output:**
-```
-🔄 Retrying 8 failed submissions...
-  ↻ Jakob Olsen - Cleaning locked folders...
-  ✅ Recovered: Jakob Olsen (Score: 1.0)
-  ↻ Sunaina Agarwal - Retry 1/∞ (file lock)
-  ✅ Recovered: Sunaina Agarwal (Score: 1.0)
-
-Recovery Rate: 8/8 file locks resolved (100%)
-```
-
-### 📊 Real-Time Status Dashboard
-Monitor grading progress with a rich, interactive terminal dashboard.
-
-```powershell
-.\status.ps1 -Detailed
-
-# Output:
-╔═══════════════════════════════════════════════════════════╗
-║         Canvas Auto-Grading Status Dashboard         ║
-╚═══════════════════════════════════════════════════════════╝
-
-Overall Progress: [################################--------] 85%
-
-📊 Summary
-  Total Submissions:  41
-  ✅ Completed:       35
-  ⚙️  Processing:      0
-  ⏳ Pending:         2
-  ❌ Failed:          4
-```
-
-**Dashboard Features:**
-- 📈 Progress bar (85% completion)
-- ✅ Recently completed submissions
-- ❌ Failed submissions grouped by error type
-- ⏳ Pending queue preview
-- 🔥 Real-time updates
-
-### 🎨 Prompt-Driven Architecture
-**Intelligence lives in prompts, not code.** Instructors can customize grading behavior without touching Python.
+Grading behavior is controlled by editable markdown files -- no code changes needed:
 
 ```
 prompts/
-├── system.md      # AI persona: "You are an encouraging TA..."
-├── grading.md     # Step-by-step workflow
-├── feedback.md    # Tone and phrasing guide
-└── rubric.md      # Grading criteria (instructor-editable)
+  system.md     -- AI persona and role definition
+  grading.md    -- Step-by-step analysis workflow
+  feedback.md   -- Tone and formatting guidelines
+rubric.md       -- Default rubric (fallback)
 ```
 
-**Simple, readable prompts that instructors can edit:**
-- `system.md` - Define AI personality and role
-- `grading.md` - Step-by-step analysis workflow
-- `feedback.md` - Tone guidelines (encouraging, specific, actionable)
-- `rubric.md` - Grading criteria (easily customizable)
+Per-assignment rubrics are automatically pulled from Canvas and saved alongside each assignment. The AI applies the correct rubric for each submission.
+
+### Fault Tolerance
+
+- **WinError 5 (file locks):** Infinite retry with PowerShell-based forced cleanup
+- **Clone failures:** Max 1 retry, then flagged for human review
+- **Queue corruption:** `fix-queue` command repairs truncated JSON from crashes
+- **Deduplication:** Same student+assignment never processed twice
+- **Graceful shutdown:** Ctrl+C finishes current grading before exit
 
 ---
 
-## 🏗️ Architecture
-
-### How It Works (5-Step Process)
+## Project Structure
 
 ```
-┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│   Canvas    │─────>│    Queue    │─────>│   GitHub    │
-│     API     │      │   (FIFO)    │      │     CLI     │
-└─────────────┘      └─────────────┘      └─────────────┘
-                            │                      │
-                            ▼                      ▼
-                    ┌─────────────┐      ┌─────────────┐
-                    │   Claude    │<─────│    Repo     │
-                    │ Sonnet 4.5  │      │   Analysis  │
-                    └─────────────┘      └─────────────┘
-                            │
-                            ▼
-                    ┌─────────────┐
-                    │   grading   │
-                    │     .md     │
-                    └─────────────┘
+canvas-ai-auto-grader/
+  cli.py               -- Click CLI entry point (run, status, analytics, export, retry)
+  daemon_new.py         -- Async daemon loop (poll -> queue -> grade -> retry)
+  canvas.py             -- Canvas API client (assignments, submissions, rubrics, grade posting)
+  grader_new.py         -- AI grading via GitHub Copilot SDK
+  analytics.py          -- Score computation engine (per-assignment, per-student, patterns)
+  report_generator.py   -- Self-contained HTML report with Chart.js
+  submission_queue.py   -- Thread-safe FIFO queue with JSON persistence
+  assignments.py        -- Folder structure management and grading result storage
+  repo_cloner.py        -- GitHub CLI wrapper for repo cloning
+  config.py             -- Pydantic config models with validation
+  logger.py             -- Rotating file logger
+  fix_queue.py          -- Queue repair utility
+  prompts/              -- Editable AI prompt files
+  rubric.md             -- Default grading rubric
+  config.json           -- Canvas credentials and settings (gitignored)
 ```
-
-1. **📥 Fetch** - Daemon polls Canvas for new "Hands-on" assignments
-2. **📋 Queue** - Submissions added to FIFO queue (fairness guaranteed)
-3. **📦 Clone** - GitHub CLI clones student repositories locally
-4. **🧠 Analyze** - Claude Sonnet 4.5 reads code and generates feedback
-5. **💾 Save** - Results stored in structured folders with YAML metadata
-
-### Tech Stack
-
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| **AI Model** | Claude Sonnet 4.5 (via Copilot) | Code analysis & feedback generation |
-| **LMS Integration** | Canvas REST API | Fetch assignments & submissions |
-| **Repo Cloning** | GitHub CLI (`gh`) | Authenticated repository access |
-| **Language** | Python 3.11+ | Core application logic |
-| **State Management** | JSON + File Locking | Persistent, thread-safe queue |
-| **Terminal UI** | Rich Library | Colored output & progress bars |
-| **Async Runtime** | asyncio | Concurrent AI processing |
 
 ---
 
-## 📸 Visual Overview
-
-### Grading Workflow
-```
-1. 📥 FETCH      →  Poll Canvas for new "Hands-on" assignments
-2. 📋 QUEUE      →  Add to FIFO queue (fair processing order)
-3. 📦 CLONE      →  GitHub CLI downloads student repository
-4. 🧠 ANALYZE    →  Claude reads code, applies rubric
-5. ✍️  FEEDBACK   →  Generate detailed markdown with score
-6. 💾 SAVE       →  Store in assignments/{id}/submissions/{student}/
-7. 🔄 RETRY      →  Auto-retry failures with smart cleanup
-```
-
-### AI-Generated Feedback File Structure
-```markdown
----
-assignment: Hands-on L2: Basics of GitHub
-student: Student Name
-score: 1.0
-graded_at: 2026-02-01T10:30:15
----
-
-## Your Feedback
-
-### 🌟 Strengths
-- Excellent repository structure
-- Comprehensive README documentation
-- Proper use of .gitignore
-
-### 💡 Suggestions for Growth
-- Add inline comments for complex logic
-- Consider breaking large functions into smaller ones
-
-**Final Score: 10/10**
-```
-
-### Folder Structure
-```
-assignments/
-├── 2772299_Hands-on_L2_Basics_of_GitHub/
-│   ├── submissions/
-│   │   ├── student_a/
-│   │   │   ├── repo/          # Cloned repository
-│   │   │   └── grading.md     # AI feedback + score
-│   │   ├── student_b/
-│   │   └── student_c/
-│   └── assignment_info.json
-├── 2772300_Hands-on_L3_Git_Workflow/
-└── ...
-```
-
-### Error Handling
-**File Locks (WinError 5):** ♾️ Infinite retry with PowerShell cleanup  
-**Invalid URLs:** ⚠️ Max 2 attempts, log for human review  
-**Network Errors:** 🔄 Retry with exponential backoff
-
----
-
-## 🚀 Quick Start
+## Getting Started
 
 ### Prerequisites
 
-- ✅ Python 3.11+ ([Download](https://www.python.org/downloads/))
-- ✅ GitHub CLI ([Install](https://cli.github.com/))
-- ✅ GitHub Copilot subscription ([Sign up](https://github.com/features/copilot))
-- ✅ Canvas API token ([Generate](https://canvas.instructure.com/doc/api/))
+- Python 3.10+
+- [GitHub CLI](https://cli.github.com/) (`gh auth login`)
+- [GitHub Copilot](https://github.com/features/copilot) subscription
+- Canvas LMS API token
+- (Recommended) [conda](https://docs.conda.io/) for environment management
 
 ### Installation
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/yourusername/canvas-ai-grader.git
-cd canvas-ai-grader
+git clone https://github.com/yourusername/canvas-ai-auto-grader.git
+cd canvas-ai-auto-grader
 
-# 2. Create Python environment
-conda create -n grader python=3.11 -y
+# Create and activate a conda environment (recommended)
+conda create -n grader python=3.10 -y
 conda activate grader
 
-# 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Authenticate GitHub CLI
 gh auth login
-
-# 5. Authenticate Copilot CLI
-npm install -g @github/copilot
-copilot auth login
-
-# 6. Configure Canvas credentials
-cp config.example.json config.json
-# Edit config.json with your Canvas API token
 ```
 
 ### Configuration
 
-Edit `config.json`:
+Create `config.json` from the template:
 
 ```json
 {
   "canvas": {
-    "base_url": "https://your-institution.instructure.com",
+    "base_url": "https://your-institution.instructure.com/",
     "api_token": "YOUR_CANVAS_API_TOKEN",
     "course_id": "123456"
   },
   "grading": {
-    "assignment_filter": "Hands-on",
-    "cleanup_days": 7
+    "clone_path": "assignments",
+    "cleanup_days": 7,
+    "assignment_filter": ["Hands-on", "Assignment"],
+    "post_to_canvas": false
+  },
+  "daemon": {
+    "poll_interval_seconds": 300
   }
 }
 ```
 
-### Run It!
+| Field | Description |
+|-------|-------------|
+| `base_url` | Your institution's Canvas URL |
+| `api_token` | Generated from Canvas > Settings > Access Tokens |
+| `course_id` | Found in the Canvas course URL |
+| `assignment_filter` | Only process assignments containing these keywords |
+| `post_to_canvas` | Set `true` to automatically post grades and comments |
+| `poll_interval_seconds` | Seconds between polling cycles |
 
-```powershell
-# Mock mode (fast, no AI costs)
-.\run.ps1
+### Usage
 
-# Production mode (AI grading with Claude)
-.\run.ps1 --no-mock
+```bash
+# Start daemon in mock mode (no AI costs, for testing)
+python cli.py run
+
+# Start daemon with real AI grading
+python cli.py run --no-mock
+
+# Scope the daemon to specific assignments
+python cli.py run -a "Hands-on" -a "Assignment"
+
+# Interactive grading (pick assignments and students from a menu)
+python cli.py grade
+
+# Grade a specific assignment non-interactively
+python cli.py grade -a "Hands-on L6" --all-students --no-mock -y
+
+# Check queue status
+python cli.py status --detailed
+
+# View analytics in terminal
+python cli.py analytics
+
+# Generate HTML analytics report
+python cli.py analytics --html
+
+# Export grades to CSV
+python cli.py export -o grades.csv
+
+# Filter analytics to one assignment
+python cli.py analytics -a "Assignment #1"
+
+# Retry failed submissions
+python cli.py retry
 ```
 
-**That's it!** The daemon is now running and will automatically grade submissions.
+> **Note:** If you use a conda environment, prefix commands with `conda run -n <env> --no-banner` to ensure the correct Python is used.
 
 ---
 
-## 📖 Usage Examples
+## Metrics
 
-### Check Status
-```powershell
-# Quick overview
-.\status.ps1
-
-# Detailed view with pending/failed submissions
-.\status.ps1 -Detailed
-
-# Show only failures
-.\status.ps1 -Failed
-
-# Show recently completed
-.\status.ps1 -Completed
-```
-
-### Manual Operations
-```powershell
-# Fix stuck queue items
-python fix_queue.py
-
-# Clean old repositories (older than 7 days)
-python -c "from assignments import cleanup_old_repos; cleanup_old_repos(7)"
-```
-
-### Customize Grading Behavior
-Edit prompt files (no coding required!):
-
-```markdown
-# prompts/system.md
-You are a supportive teaching assistant who believes every student can improve.
-
-# Change tone:
-You are a professional code reviewer focused on industry best practices.
-```
-
----
-
-## 📊 Performance Metrics
-
-### Real-World Results (Production Testing)
+Tested against a real university course (ITCS 6190, UNC Charlotte):
 
 | Metric | Value |
 |--------|-------|
-| **Total Submissions** | 41 |
-| **Successfully Graded** | 35 (85%) |
-| **File Lock Resolution** | 11/11 (100%) |
-| **Invalid Repos (Human Review)** | 6 (15%) |
-| **Average Grading Time** | 30-60 seconds |
-| **Feedback Quality** | Professional, constructive, specific |
-
-### Before vs After
-
-| Task | Manual | With AI Agent | Time Saved |
-|------|--------|---------------|------------|
-| Grade 35 submissions | ~7 hours | ~2 hours | **71%** |
-| Write feedback | ~10 min/student | Instant | **100%** |
-| Handle file locks | Manual cleanup | Automatic | **100%** |
-| Track progress | Spreadsheet | Live dashboard | **90%** |
+| Assignments synced | 11 |
+| Submissions processed | 161 |
+| Submissions graded (AI) | 43 (26/26 Hands-on L6 complete) |
+| Students | 27 |
+| Grading time per submission | 30-60 seconds |
+| File lock auto-recovery | 100% |
+| Manual intervention required | Clone failures due to Windows path limits only |
 
 ---
 
-## 🎓 Educational Value
+## Roadmap
 
-### For Teaching Assistants
-- ⏰ **Save 90%+ grading time** - Focus on complex assignments
-- 📝 **Consistent feedback** - Every student gets the same quality
-- 🎯 **Fair scoring** - AI applies rubric uniformly
-- 🧠 **Learn prompt engineering** - Valuable AI skill
-
-### For Students
-- ⚡ **Fast turnaround** - Feedback within hours, not days
-- 💬 **Constructive tone** - Encouraging, specific suggestions
-- 📚 **Detailed explanations** - Learn what worked and why
-- 🎯 **Clear improvement paths** - Actionable next steps
-
-### For Instructors
-- 📈 **Scalable grading** - Handle 100+ students easily
-- 🎨 **Customizable rubrics** - Edit prompts, not code
-- 📊 **Grade analytics** - (Coming soon) Common mistake patterns
-- 🔧 **Easy maintenance** - Minimal technical knowledge needed
-
----
-
-## 🔧 Advanced Features
-
-### Infinite Retry for File Locks
-```python
-# WinError 5 (Access Denied) - Automatic infinite retry
-if "WinError 5" in error:
-    cleanup_locked_folder()
-    retry_indefinitely()  # No human intervention needed
-```
-
-### Deduplication
-```python
-# Prevents duplicate grading of same student
-seen_students = set()
-for submission in queue:
-    key = f"{assignment_id}_{student_login}"
-    if key not in seen_students:
-        process(submission)
-        seen_students.add(key)
-```
-
-### Smart Cleanup
-```python
-# Automatic deletion of repos older than 7 days
-if cycle % 10 == 0:
-    cleanup_old_repos(days=7)
-```
+- [x] Canvas API integration (assignments, submissions, rubrics)
+- [x] FIFO queue with crash recovery
+- [x] AI grading with Claude Sonnet 4.5
+- [x] Automatic retry with smart cleanup
+- [x] CLI with Click (run, status, export, retry, fix-queue)
+- [x] Post grades back to Canvas
+- [x] Per-assignment rubric pulling from Canvas API
+- [x] Score analytics dashboard (terminal + HTML + JSON)
+- [x] Feedback pattern analysis
+- [x] Centralized config with Pydantic validation
+- [x] Rotating file logging
+- [x] Selective grading (`grade` command with assignment/student menus)
+- [ ] Plagiarism detection (code similarity analysis)
+- [ ] Student code execution and test validation
+- [ ] Multi-TA parallel grading with workload distribution
+- [ ] Web-based real-time monitoring dashboard
 
 ---
 
-## 🛣️ Roadmap
+## License
 
-### Phase 2 - Coming Soon
-- [ ] **Push grades to Canvas** - Post scores and feedback automatically
-- [ ] **CSV export** - Generate gradebook files
-- [ ] **Email notifications** - Alert students when graded
-- [ ] **Web dashboard** - Real-time browser-based monitoring
-
-### Phase 3 - Future
-- [ ] **Plagiarism detection** - Code similarity analysis
-- [ ] **Test execution** - Run student code, check output
-- [ ] **Style checking** - Automated linting/formatting feedback
-- [ ] **Multi-TA support** - Parallel grading with workload distribution
-- [ ] **Analytics dashboard** - Common mistakes, score distributions
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- **GitHub Copilot** - For providing access to Claude Sonnet 4.5
-- **Canvas LMS** - For the robust REST API
-- **Rich Library** - For beautiful terminal output
-- **The Python Community** - For excellent async/await support
-
----
-
-## ⭐ Star History
-
-If this project helps you, please consider giving it a star! ⭐
-
----
-
-<p align="center">
-  <b>Made with ❤️ for educators who deserve more time to teach</b>
-  <br/>
-  <br/>
-  <a href="#-canvas-ai-auto-grader">Back to Top ↑</a>
-</p>
+MIT License. See [LICENSE](LICENSE) for details.

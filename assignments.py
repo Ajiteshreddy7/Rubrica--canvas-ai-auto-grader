@@ -19,13 +19,7 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 import shutil
 
-CONFIG_FILE = Path(__file__).parent / "config.json"
-
-
-def load_config() -> Dict[str, Any]:
-    """Load configuration."""
-    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+from config import load_config
 
 
 def sanitize_filename(name: str) -> str:
@@ -47,11 +41,11 @@ def get_assignment_folder(assignment_id: str, assignment_title: str) -> Path:
     Creates: assignments/{assignment_id}_{sanitized_title}/
     """
     config = load_config()
-    base_path = Path(config["grading"]["clone_path"])
-    
+    base_path = Path(config.grading.clone_path)
+
     sanitized_title = sanitize_filename(assignment_title)
     folder_name = f"{assignment_id}_{sanitized_title}"
-    
+
     return base_path / folder_name
 
 
@@ -125,11 +119,11 @@ def list_all_assignments() -> List[Dict[str, Any]]:
     - metadata: Dict (from assignment.json)
     """
     config = load_config()
-    base_path = Path(config["grading"]["clone_path"])
-    
+    base_path = Path(config.grading.clone_path)
+
     if not base_path.exists():
         return []
-    
+
     assignments = []
     for folder in base_path.iterdir():
         if not folder.is_dir():
@@ -170,8 +164,8 @@ def cleanup_old_repos(days: int = 7) -> int:
     deleted_count = 0
     
     config = load_config()
-    base_path = Path(config["grading"]["clone_path"])
-    
+    base_path = Path(config.grading.clone_path)
+
     if not base_path.exists():
         return 0
     

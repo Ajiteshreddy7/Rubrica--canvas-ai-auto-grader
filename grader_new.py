@@ -18,7 +18,7 @@ from canvas import CanvasClient
 
 # Paths
 PROMPTS_DIR = Path(__file__).parent / "prompts"
-RUBRIC_FILE = Path(__file__).parent / "rubric.md"
+DEFAULT_RUBRIC_FILE = Path(__file__).parent / "rubric.md"
 
 
 def load_prompt(name: str) -> str:
@@ -28,9 +28,21 @@ def load_prompt(name: str) -> str:
         return f.read()
 
 
-def load_rubric() -> str:
-    """Load the grading rubric."""
-    with open(RUBRIC_FILE, "r", encoding="utf-8") as f:
+def load_rubric(assignment_id: str = None, assignment_title: str = None) -> str:
+    """
+    Load the grading rubric for an assignment.
+
+    Tries assignment-specific rubric first, falls back to default.
+    """
+    if assignment_id and assignment_title:
+        from assignments import get_assignment_folder
+        assignment_rubric = get_assignment_folder(assignment_id, assignment_title) / "rubric.md"
+        if assignment_rubric.exists():
+            with open(assignment_rubric, "r", encoding="utf-8") as f:
+                return f.read()
+
+    # Fallback to default rubric
+    with open(DEFAULT_RUBRIC_FILE, "r", encoding="utf-8") as f:
         return f.read()
 
 
@@ -97,6 +109,7 @@ def extract_pdf_content(pdf_path: Path) -> str:
 
 
 def build_grading_prompt(
+    assignment_id: str,
     assignment_title: str,
     max_points: float,
     submission_type: str,
@@ -107,7 +120,7 @@ def build_grading_prompt(
     system_prompt = load_prompt("system")
     grading_prompt = load_prompt("grading")
     feedback_guide = load_prompt("feedback")
-    rubric = load_rubric()
+    rubric = load_rubric(assignment_id, assignment_title)
     
     # Fill template variables
     filled_prompt = grading_prompt.format(
@@ -166,6 +179,7 @@ async def grade_with_copilot(
     
     # Build prompt
     prompt = build_grading_prompt(
+        assignment_id,
         assignment_title,
         max_points,
         submission_type,
@@ -271,11 +285,11 @@ The feedback should include:
     finally:
         try:
             await session.destroy()
-        except:
+        except Exception:
             pass
         try:
             await client.stop()
-        except:
+        except Exception:
             pass
 
 

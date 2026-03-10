@@ -10,6 +10,10 @@ queue.json
 queue_backup.json
 status.json
 
+# Generated reports
+analytics_report.html
+grades.csv
+
 # Mock data helpers
 create_mock_queue.py
 
@@ -33,7 +37,12 @@ venv/
 # Logs
 *.log
 daemon.log
+logs/
 
 # OS
 .DS_Store
 Thumbs.db
+nul
+
+# Claude Code
+.claude/

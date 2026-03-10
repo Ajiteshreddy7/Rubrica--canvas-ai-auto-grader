@@ -9,23 +9,17 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 import json
 
-CONFIG_FILE = Path(__file__).parent / "config.json"
-
-
-def load_config() -> Dict[str, Any]:
-    """Load Canvas configuration."""
-    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+from config import load_config
 
 
 class CanvasClient:
     """Canvas LMS API client for fetching submissions."""
-    
+
     def __init__(self):
         config = load_config()
-        self.base_url = config["canvas"]["base_url"].rstrip("/")
-        self.api_token = config["canvas"]["api_token"]
-        self.course_id = config["canvas"]["course_id"]
+        self.base_url = config.canvas.base_url
+        self.api_token = config.canvas.api_token
+        self.course_id = config.canvas.course_id
         
         self.headers = {
             "Authorization": f"Bearer {self.api_token}",
@@ -62,29 +56,43 @@ class CanvasClient:
         
         return results
     
-    def get_all_assignments(self, filter_keyword: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_all_assignments(self, filter_keywords=None) -> List[Dict[str, Any]]:
         """
         Get all assignments for the course.
-        
+
         Args:
-            filter_keyword: If provided, only return assignments with this keyword in the name
-        
+            filter_keywords: A string or list of strings. If provided, only return
+                           assignments matching ANY of the keywords in their name.
+
         Returns:
             List of assignment dicts with keys: id, name, points_possible, due_at, etc.
         """
         endpoint = f"/courses/{self.course_id}/assignments"
         assignments = self._get_paginated(endpoint)
-        
-        if filter_keyword:
-            filter_lower = filter_keyword.lower()
-            assignments = [a for a in assignments if filter_lower in a.get("name", "").lower()]
-        
+
+        if filter_keywords:
+            # Normalize to list
+            if isinstance(filter_keywords, str):
+                filter_keywords = [filter_keywords]
+            keywords_lower = [k.lower() for k in filter_keywords if k]
+            if keywords_lower:
+                assignments = [
+                    a for a in assignments
+                    if any(kw in a.get("name", "").lower() for kw in keywords_lower)
+                ]
+
         return assignments
     
     def get_assignment(self, assignment_id: str) -> Dict[str, Any]:
         """Get specific assignment details."""
         endpoint = f"/courses/{self.course_id}/assignments/{assignment_id}"
         return self._get(endpoint)
+
+    def get_assignment_with_rubric(self, assignment_id: str) -> Dict[str, Any]:
+        """Get assignment details including rubric criteria if one is attached."""
+        endpoint = f"/courses/{self.course_id}/assignments/{assignment_id}"
+        params = {"include[]": ["rubric_assessment"]}
+        return self._get(endpoint, params)
     
     def get_submissions(self, assignment_id: str) -> List[Dict[str, Any]]:
         """Get all submissions for a specific assignment."""
@@ -110,6 +118,44 @@ class CanvasClient:
                 f.write(chunk)
         
         return save_path
+
+    def _put(self, endpoint: str, data: Dict[str, Any]) -> Any:
+        """Make PUT request to Canvas API."""
+        url = f"{self.base_url}/api/v1{endpoint}"
+        response = requests.put(url, headers=self.headers, json=data)
+        response.raise_for_status()
+        return response.json()
+
+    def post_grade(
+        self,
+        assignment_id: str,
+        user_id: str,
+        score: float,
+        comment: str = ""
+    ) -> Dict[str, Any]:
+        """
+        Post a grade and optional comment to Canvas for a submission.
+
+        Args:
+            assignment_id: Canvas assignment ID
+            user_id: Canvas user ID
+            score: Numeric score to post
+            comment: Optional text comment for the student
+
+        Returns:
+            Canvas API response dict
+        """
+        endpoint = f"/courses/{self.course_id}/assignments/{assignment_id}/submissions/{user_id}"
+        data = {
+            "submission": {
+                "posted_grade": score
+            }
+        }
+        if comment:
+            data["comment"] = {
+                "text_comment": comment
+            }
+        return self._put(endpoint, data)
 
 
 def parse_submission(raw: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -164,27 +210,60 @@ def parse_submission(raw: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             "url": "",
             "body": raw.get("body", "")
         }
-    
+
     return None
 
 
-def fetch_new_submissions(existing_ids: List[str]) -> List[Dict[str, Any]]:
+def format_rubric_as_markdown(rubric_data: List[Dict[str, Any]], points_possible: float) -> str:
     """
-    Fetch submissions from Canvas that aren't already tracked.
-    
-    Args:
-        existing_ids: List of submission IDs already in status.json
-    
-    Returns:
-        List of new submissions to stage
+    Convert Canvas rubric criteria to a markdown rubric file.
+
+    Canvas rubric format:
+    [
+        {
+            "id": "...",
+            "description": "Criterion name",
+            "long_description": "Details",
+            "points": 10.0,
+            "ratings": [
+                {"description": "Excellent", "long_description": "...", "points": 10.0},
+                {"description": "Good", "long_description": "...", "points": 7.0},
+                ...
+            ]
+        },
+        ...
+    ]
     """
-    client = CanvasClient()
-    raw_submissions = client.get_submissions()
-    
-    new_submissions = []
-    for raw in raw_submissions:
-        parsed = parse_submission(raw)
-        if parsed and parsed["id"] not in existing_ids:
-            new_submissions.append(parsed)
-    
-    return new_submissions
+    sections = [f"# Assignment Grading Rubric\n\n**Total Points:** {points_possible}\n"]
+
+    for criterion in rubric_data:
+        name = criterion.get("description", "Unnamed Criterion")
+        points = criterion.get("points", 0)
+        long_desc = criterion.get("long_description", "")
+
+        sections.append(f"## {name} ({points} points)\n")
+
+        if long_desc:
+            sections.append(f"{long_desc}\n")
+
+        ratings = criterion.get("ratings", [])
+        if ratings:
+            sections.append("| Level | Points | Description |")
+            sections.append("|-------|--------|-------------|")
+
+            # Sort ratings by points descending
+            sorted_ratings = sorted(ratings, key=lambda r: r.get("points", 0), reverse=True)
+
+            for rating in sorted_ratings:
+                r_desc = rating.get("description", "")
+                r_points = rating.get("points", 0)
+                r_long = rating.get("long_description", "")
+                display = f"{r_desc}. {r_long}" if r_long else r_desc
+                sections.append(f"| **{r_desc}** | {r_points} | {display} |")
+
+            sections.append("")
+
+    sections.append("---\n")
+    sections.append("*This rubric was automatically pulled from Canvas.*\n")
+
+    return "\n".join(sections)

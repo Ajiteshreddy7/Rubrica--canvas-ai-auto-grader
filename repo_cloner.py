@@ -237,7 +237,7 @@ def format_repo_for_grading(repo_path: Path, max_file_size: int = 50000) -> str:
                 sections.append(content[:5000])  # Truncate if very long
                 if len(content) > 5000:
                     sections.append("\n... (truncated)")
-            except:
+            except Exception:
                 sections.append("(Could not read README)")
             sections.append("\n")
             break
@@ -265,7 +265,7 @@ def format_repo_for_grading(repo_path: Path, max_file_size: int = 50000) -> str:
             try:
                 content = source_file.read_text(encoding="utf-8", errors="ignore")
                 sections.append(f"```{source_file.suffix[1:]}\n{content}\n```\n")
-            except:
+            except Exception:
                 sections.append("(Could not read file)\n")
         else:
             sections.append("(File too large, skipped)\n")

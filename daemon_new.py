@@ -452,7 +452,15 @@ async def run_daemon(mock: bool = True, assignment_names=None):
         
         # Show status
         show_status()
-        
+
+        # Auto-publish analytics dashboard
+        from publish import publish_dashboard
+        try:
+            if publish_dashboard(verbose=False):
+                console.print("[dim]Dashboard published to GitHub Pages[/dim]")
+        except Exception as e:
+            log.warning(f"Dashboard publish skipped: {e}")
+
         if shutdown_flag:
             break
         
@@ -601,6 +609,15 @@ async def run_grade(mock: bool, assignments_with_students, regrade: bool = False
     if failed_count:
         console.print(f"[red]{failed_count} submission(s) failed.[/red]")
     log.info(f"One-shot grade finished: processed {processed}, skipped {skipped_count}, failed {failed_count}")
+
+    # Auto-publish analytics dashboard
+    from publish import publish_dashboard
+    try:
+        console.print("\n[cyan]>> Publishing analytics dashboard...[/cyan]")
+        if publish_dashboard():
+            console.print("[green][OK] Dashboard published to GitHub Pages[/green]")
+    except Exception as e:
+        console.print(f"[yellow]Dashboard publish skipped: {e}[/yellow]")
 
 
 if __name__ == "__main__":

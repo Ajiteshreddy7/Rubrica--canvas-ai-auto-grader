@@ -9,6 +9,7 @@ Usage:
     python cli.py retry [--max-retries N]
     python cli.py export [--output FILE]
     python cli.py analytics [--html] [--json] [--output FILE] [--assignment NAME]
+    python cli.py publish [--enable-pages]
 """
 
 import asyncio
@@ -520,6 +521,30 @@ def analytics(html_flag, json_flag, output, assignment):
             console.print(table)
 
     console.print(f"\n[dim]Use --html to generate a detailed HTML report with charts.[/dim]")
+
+
+@cli.command()
+@click.option("--enable-pages", is_flag=True, help="Enable GitHub Pages on the repo (first-time setup)")
+def publish(enable_pages):
+    """Publish the analytics dashboard to GitHub Pages."""
+    from publish import publish_dashboard, enable_github_pages, PAGES_URL
+
+    if enable_pages:
+        try:
+            enable_github_pages()
+        except Exception as e:
+            console.print(f"[red]Failed to enable Pages: {e}[/red]")
+            return
+
+    console.print("\n[cyan]>> Publishing analytics dashboard...[/cyan]")
+    try:
+        if publish_dashboard():
+            console.print(f"[green][OK] Dashboard published to GitHub Pages[/green]")
+            console.print(f"URL: {PAGES_URL}")
+        else:
+            console.print("[yellow]No grading data to publish. Run the grader first.[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Publish failed: {e}[/red]")
 
 
 if __name__ == "__main__":

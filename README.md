@@ -14,7 +14,7 @@
 
 ## The Problem
 
-Grading programming assignments is repetitive, time-consuming, and inconsistent. A TA grading 30 GitHub submissions manually spends ~7 hours reading code, writing feedback, and entering scores -- and the 30th student gets different quality feedback than the 1st.
+Grading programming assignments is repetitive, time-consuming, and inconsistent. A TA grading 30 GitHub submissions manually spends ~3 hours reading code, writing feedback, and entering scores -- and the 30th student gets different quality feedback than the 1st.
 
 ## The Solution
 
@@ -132,6 +132,7 @@ Commands:
   export     Export all grades to CSV
   retry      Retry eligible failed submissions
   fix-queue  Repair stuck queue items after a crash
+  publish    Publish analytics dashboard to GitHub Pages
 ```
 
 **Status dashboard:**
@@ -212,6 +213,16 @@ HTML report generated: analytics_report.html
 
 Generates a self-contained HTML file with Chart.js visualizations: score distribution histograms, assignment comparison charts, submission type breakdown, sortable student performance table, and feedback pattern analysis.
 
+**Publish dashboard to GitHub Pages:**
+```
+$ python cli.py publish
+>> Publishing analytics dashboard...
+[OK] Dashboard published to GitHub Pages
+URL: https://ajiteshreddy7.github.io/Rubrica--canvas-ai-auto-grader/
+```
+
+The dashboard auto-publishes after every daemon cycle and `grade` command. First-time setup: `python cli.py publish --enable-pages`.
+
 ### AI-Generated Feedback
 
 Each submission produces a `grading.md` file with YAML frontmatter:
@@ -276,6 +287,7 @@ rubrica/
   grader_new.py         -- AI grading via GitHub Copilot SDK
   analytics.py          -- Score computation engine (per-assignment, per-student, patterns)
   report_generator.py   -- Self-contained HTML report with Chart.js
+  publish.py            -- Git-plumbing publisher for GitHub Pages dashboard
   submission_queue.py   -- Thread-safe FIFO queue with JSON persistence
   assignments.py        -- Folder structure management and grading result storage
   repo_cloner.py        -- GitHub CLI wrapper for repo cloning
@@ -379,6 +391,12 @@ python cli.py export -o grades.csv
 # Filter analytics to one assignment
 python cli.py analytics -a "Assignment #1"
 
+# Publish analytics dashboard to GitHub Pages
+python cli.py publish
+
+# First-time setup: enable GitHub Pages on the repo
+python cli.py publish --enable-pages
+
 # Retry failed submissions
 python cli.py retry
 ```
@@ -417,6 +435,7 @@ Tested against a real university course (ITCS 6190, UNC Charlotte):
 - [x] Centralized config with Pydantic validation
 - [x] Rotating file logging
 - [x] Selective grading (`grade` command with assignment/student menus)
+- [x] Auto-publish analytics dashboard to GitHub Pages
 - [ ] Plagiarism detection (code similarity analysis)
 - [ ] Student code execution and test validation
 - [ ] Multi-TA parallel grading with workload distribution

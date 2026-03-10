@@ -1,4 +1,4 @@
-# Canvas AI Auto-Grader
+# Rubrica 
 
 **An autonomous grading pipeline that polls Canvas LMS, clones student GitHub repos, and grades submissions with AI -- turning hours of manual review into minutes.**
 

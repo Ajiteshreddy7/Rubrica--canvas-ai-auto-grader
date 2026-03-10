@@ -1,0 +1,1988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rubrica Analytics Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .card-title {
+            font-size: 0.875rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .section {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+
+        .chart-container {
+            position: relative;
+            margin: 1.5rem 0;
+            padding: 1rem;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+        }
+
+        .chart-wrapper.tall {
+            height: 600px;
+        }
+
+        .assignment-chart {
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .assignment-chart:last-child {
+            border-bottom: none;
+        }
+
+        .assignment-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #444;
+            margin-bottom: 1rem;
+        }
+
+        .assignment-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #333;
+            margin-top: 0.25rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        th:hover {
+            background: #5568d3;
+        }
+
+        td {
+            padding: 0.875rem 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        .performance-high {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .performance-medium {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .performance-low {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .feedback-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feedback-item {
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            background: #f9f9f9;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .feedback-text {
+            flex: 1;
+        }
+
+        .feedback-count {
+            background: #667eea;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: bold;
+        }
+
+        .subsection {
+            margin-bottom: 2rem;
+        }
+
+        .subsection-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 1rem;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 2rem;
+            color: #999;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .header {
+                padding: 1.5rem 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .section {
+                padding: 1.5rem 1rem;
+            }
+
+            .chart-wrapper {
+                height: 300px;
+            }
+
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 0.875rem;
+            }
+
+            th, td {
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Rubrica Analytics Report</h1>
+        <p>Generated on March 10, 2026 at 05:00 PM</p>
+    </div>
+
+    <div class="container">
+        <!-- Overall Summary Cards -->
+        <div class="summary-cards">
+            <div class="card">
+                <div class="card-title">Total Graded</div>
+                <div class="card-value">69</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Students</div>
+                <div class="card-value">27</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Assignments</div>
+                <div class="card-value">3</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Average Score</div>
+                <div class="card-value">97.0%</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Pass Rate</div>
+                <div class="card-value">98.6%</div>
+            </div>
+        </div>
+
+        <!-- Submission Type Breakdown -->
+        
+        <div class="section">
+            <h2 class="section-title">Submission Type Breakdown</h2>
+            <div class="chart-container">
+                <div class="chart-wrapper">
+                    <canvas id="submissionTypeChart"></canvas>
+                </div>
+            </div>
+        </div>
+    
+
+        <!-- Assignment Comparison -->
+        
+        <div class="section">
+            <h2 class="section-title">Assignment Performance Comparison</h2>
+            <div class="chart-container">
+                <div class="chart-wrapper tall">
+                    <canvas id="assignmentComparisonChart"></canvas>
+                </div>
+            </div>
+        </div>
+    
+
+        <!-- Per-Assignment Score Distributions -->
+        <div class="section"><h2 class="section-title">Score Distributions by Assignment</h2>
+        <div class="assignment-chart">
+            <h3 class="assignment-title">Assignment #1 - Virtualization and Containerization</h3>
+            <div class="assignment-stats">
+                <div class="stat-item">
+                    <div class="stat-label">Submissions</div>
+                    <div class="stat-value">26</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Avg Score</div>
+                    <div class="stat-value">3.0/3.0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Avg %</div>
+                    <div class="stat-value">100.0%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Median</div>
+                    <div class="stat-value">3.0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Range</div>
+                    <div class="stat-value">3.0-3.0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Std Dev</div>
+                    <div class="stat-value">0.0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Pass Rate</div>
+                    <div class="stat-value">100.0%</div>
+                </div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-wrapper">
+                    <canvas id="distChart_0"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="assignment-chart">
+            <h3 class="assignment-title">Assignment #2 - Big Data Analytics and Hadoop</h3>
+            <div class="assignment-stats">
+                <div class="stat-item">
+                    <div class="stat-label">Submissions</div>
+                    <div class="stat-value">17</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Avg Score</div>
+                    <div class="stat-value">3.0/3.0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Avg %</div>
+                    <div class="stat-value">100.0%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Median</div>
+                    <div class="stat-value">3.0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Range</div>
+                    <div class="stat-value">3.0-3.0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Std Dev</div>
+                    <div class="stat-value">0.0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Pass Rate</div>
+                    <div class="stat-value">100.0%</div>
+                </div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-wrapper">
+                    <canvas id="distChart_1"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="assignment-chart">
+            <h3 class="assignment-title">Hands-on L6: Spark Structured APIs</h3>
+            <div class="assignment-stats">
+                <div class="stat-item">
+                    <div class="stat-label">Submissions</div>
+                    <div class="stat-value">26</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Avg Score</div>
+                    <div class="stat-value">1.8/2.0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Avg %</div>
+                    <div class="stat-value">92.1%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Median</div>
+                    <div class="stat-value">1.9</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Range</div>
+                    <div class="stat-value">0.9-2.0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Std Dev</div>
+                    <div class="stat-value">0.2</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Pass Rate</div>
+                    <div class="stat-value">96.2%</div>
+                </div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-wrapper">
+                    <canvas id="distChart_2"></canvas>
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <!-- Student Performance Table -->
+        
+        <div class="section">
+            <h2 class="section-title">Student Performance</h2>
+            <table id="studentTable">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0)">Student</th>
+                        <th onclick="sortTable(1)">Assignments</th>
+                        <th onclick="sortTable(2)">Average %</th>
+                        <th onclick="sortTable(3)">Total Score</th>
+                        <th onclick="sortTable(4)">Max Points</th>
+                    </tr>
+                </thead>
+                <tbody>
+    
+                    <tr>
+                        <td>Dalton Corriher</td>
+                        <td>2</td>
+                        <td class="performance-high">92.5%</td>
+                        <td>4.7</td>
+                        <td>5.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Dattasai Viswas Yadati</td>
+                        <td>3</td>
+                        <td class="performance-high">97.5%</td>
+                        <td>7.8</td>
+                        <td>8.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Eshwar Dudala</td>
+                        <td>3</td>
+                        <td class="performance-high">97.5%</td>
+                        <td>7.8</td>
+                        <td>8.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Het Patel</td>
+                        <td>3</td>
+                        <td class="performance-high">100.0%</td>
+                        <td>8.0</td>
+                        <td>8.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Himanshi Shrivas</td>
+                        <td>2</td>
+                        <td class="performance-high">97.5%</td>
+                        <td>4.9</td>
+                        <td>5.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Jack Karegeannes</td>
+                        <td>3</td>
+                        <td class="performance-high">96.7%</td>
+                        <td>7.8</td>
+                        <td>8.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Jacob Praskala</td>
+                        <td>3</td>
+                        <td class="performance-high">97.5%</td>
+                        <td>7.8</td>
+                        <td>8.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Jakob Olsen</td>
+                        <td>3</td>
+                        <td class="performance-high">100.0%</td>
+                        <td>8.0</td>
+                        <td>8.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Juan Rojas</td>
+                        <td>2</td>
+                        <td class="performance-high">100.0%</td>
+                        <td>5.0</td>
+                        <td>5.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Kshitij Natu</td>
+                        <td>3</td>
+                        <td class="performance-high">98.7%</td>
+                        <td>7.9</td>
+                        <td>8.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Lakshmi Deepak Chidagam</td>
+                        <td>2</td>
+                        <td class="performance-high">100.0%</td>
+                        <td>5.0</td>
+                        <td>5.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Lakshmi Vaishnav Reddy Dandu</td>
+                        <td>2</td>
+                        <td class="performance-high">98.8%</td>
+                        <td>5.0</td>
+                        <td>5.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Medha Karthik</td>
+                        <td>2</td>
+                        <td class="performance-high">100.0%</td>
+                        <td>5.0</td>
+                        <td>5.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Michael Gohn</td>
+                        <td>3</td>
+                        <td class="performance-high">82.5%</td>
+                        <td>7.0</td>
+                        <td>8.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Michael Thompson</td>
+                        <td>3</td>
+                        <td class="performance-high">94.7%</td>
+                        <td>7.7</td>
+                        <td>8.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Pradhyumna Kothapalli</td>
+                        <td>2</td>
+                        <td class="performance-high">93.0%</td>
+                        <td>4.7</td>
+                        <td>5.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Pranathi Thotli</td>
+                        <td>2</td>
+                        <td class="performance-high">100.0%</td>
+                        <td>6.0</td>
+                        <td>6.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Pratik Nichit</td>
+                        <td>3</td>
+                        <td class="performance-high">100.0%</td>
+                        <td>8.0</td>
+                        <td>8.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Rahul Das</td>
+                        <td>3</td>
+                        <td class="performance-high">98.7%</td>
+                        <td>7.9</td>
+                        <td>8.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Rishitha Adapa</td>
+                        <td>2</td>
+                        <td class="performance-high">97.5%</td>
+                        <td>4.9</td>
+                        <td>5.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Shivansh Tripathi</td>
+                        <td>2</td>
+                        <td class="performance-high">98.8%</td>
+                        <td>5.0</td>
+                        <td>5.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Shruti Deulgaonkar</td>
+                        <td>3</td>
+                        <td class="performance-high">96.7%</td>
+                        <td>7.8</td>
+                        <td>8.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Sunaina Agarwal</td>
+                        <td>3</td>
+                        <td class="performance-high">99.2%</td>
+                        <td>8.0</td>
+                        <td>8.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Thea Japit</td>
+                        <td>3</td>
+                        <td class="performance-high">90.0%</td>
+                        <td>7.4</td>
+                        <td>8.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Udaykiranreddy Kummathi</td>
+                        <td>3</td>
+                        <td class="performance-high">99.7%</td>
+                        <td>8.0</td>
+                        <td>8.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Vamsi Aakash Samudrala</td>
+                        <td>2</td>
+                        <td class="performance-high">97.0%</td>
+                        <td>4.9</td>
+                        <td>5.0</td>
+                    </tr>
+        
+                    <tr>
+                        <td>Yamini Buyya</td>
+                        <td>2</td>
+                        <td class="performance-high">98.5%</td>
+                        <td>4.9</td>
+                        <td>5.0</td>
+                    </tr>
+        
+                </tbody>
+            </table>
+        </div>
+    
+
+        <!-- Feedback Patterns -->
+        <div class="section"><h2 class="section-title">Feedback Patterns</h2><div class="grid-2"><div class="subsection"><h3 class="subsection-title">Common Strengths</h3><ul class="feedback-list"><li class="feedback-item"><span class="feedback-text">**Comprehensive documentation**: Your README is exceptionally well-structured with clear tables, execution instructions, and even an errors/resolutions section</span><span class="feedback-count">1</span></li><li class="feedback-item"><span class="feedback-text">**Clean, professional code**: Your `main.py` uses window functions appropriately, has meaningful variable names (`user_fav_genre`, `loyalty`), and includes helpful comments</span><span class="feedback-count">1</span></li><li class="feedback-item"><span class="feedback-text">**Complete functionality**: All four analysis tasks are correctly implemented with proper output files generated</span><span class="feedback-count">1</span></li><li class="feedback-item"><span class="feedback-text">**Smart helper function**: The `save_csv()` function elegantly handles output cleanup and single-partition writes</span><span class="feedback-count">1</span></li></ul></div><div class="subsection"><h3 class="subsection-title">Common Areas for Improvement</h3><ul class="feedback-list"><li class="feedback-item"><span class="feedback-text">**Add a comprehensive .gitignore file** - Exclude build artifacts (`target/`, `output/`, `*.class`), Python cache (`__pycache__/`, `*.pyc`), and IDE files. This is a critical best practice for professional repositories.</span><span class="feedback-count">1</span></li><li class="feedback-item"><span class="feedback-text">**Fix syntax errors before submission** - The `test.py` file has a syntax error that would prevent it from running. Always do a final review or use automated linting tools.</span><span class="feedback-count">1</span></li><li class="feedback-item"><span class="feedback-text">**Complete or remove incomplete code** - The `dockerintro/app.py` is missing route handlers. Either complete the Flask routes or add a comment explaining why it's a partial example.</span><span class="feedback-count">1</span></li><li class="feedback-item"><span class="feedback-text">**Add a `.gitignore` file**: Include standard Python exclusions to keep your repository clean. A simple starter:</span><span class="feedback-count">1</span></li><li class="feedback-item"><span class="feedback-text">**Enhance code comments**: Add brief inline comments for complex transformations, especially in Task 3 where you calculate loyalty scores. This helps others (and future you!) understand the logic quickly.</span><span class="feedback-count">1</span></li><li class="feedback-item"><span class="feedback-text">**Consider output formatting**: While `.show()` works well for development, consider adding parameters like `.show(20, truncate=False)` consistently or writing results to files for production scenarios (which you already mentioned in your README!).</span><span class="feedback-count">1</span></li><li class="feedback-item"><span class="feedback-text">**Add a `.gitignore` file** - Include entries for `*.csv`, `output/`, `__pycache__/`, and `*.pyc` to keep your repository clean</span><span class="feedback-count">1</span></li><li class="feedback-item"><span class="feedback-text">**Enhance code comments** - While your code is readable, adding comments explaining *why* you chose certain approaches (e.g., why you use left join vs inner join) helps others learn from your implementation</span><span class="feedback-count">1</span></li><li class="feedback-item"><span class="feedback-text">**Consider function modularity** - Your `main.py` could be refactored into functions (e.g., `get_favorite_genres()`, `calculate_loyalty_scores()`) to make the code more testable and reusable</span><span class="feedback-count">1</span></li><li class="feedback-item"><span class="feedback-text">**Add inline comments for complex transformations**: While your code is clean, adding brief comments explaining the window function logic or loyalty score formula would help other developers understand the "why" behind the implementation.</span><span class="feedback-count">1</span></li></ul></div></div><div class="subsection"><h3 class="subsection-title">Assignments with Common Issues</h3><div style="margin-bottom: 1.5rem;"><h4 style="color: #555; margin-bottom: 0.5rem;">Hands-on L6: Spark Structured APIs</h4><ul class="feedback-list"><li class="feedback-item"><span class="feedback-text">**Add a comprehensive .gitignore file** - Exclude build artifacts (`target/`, `output/`, `*.class`), Python cache (`__pycache__/`, `*.pyc`), and IDE files. This is a critical best practice for professional repositories.</span><span class="feedback-count">1</span></li><li class="feedback-item"><span class="feedback-text">**Fix syntax errors before submission** - The `test.py` file has a syntax error that would prevent it from running. Always do a final review or use automated linting tools.</span><span class="feedback-count">1</span></li><li class="feedback-item"><span class="feedback-text">**Complete or remove incomplete code** - The `dockerintro/app.py` is missing route handlers. Either complete the Flask routes or add a comment explaining why it's a partial example.</span><span class="feedback-count">1</span></li><li class="feedback-item"><span class="feedback-text">**Add a `.gitignore` file**: Include standard Python exclusions to keep your repository clean. A simple starter:</span><span class="feedback-count">1</span></li><li class="feedback-item"><span class="feedback-text">**Enhance code comments**: Add brief inline comments for complex transformations, especially in Task 3 where you calculate loyalty scores. This helps others (and future you!) understand the logic quickly.</span><span class="feedback-count">1</span></li></ul></div></div></div>
+    </div>
+
+    <script>
+        // Data embedded from Python
+        const reportData = {
+  "generated_at": "2026-03-10T17:00:50.530387",
+  "overall": {
+    "total_graded": 69,
+    "total_students": 27,
+    "total_assignments": 3,
+    "overall_avg_percentage": 97.0,
+    "overall_pass_rate": 98.6,
+    "type_breakdown": {
+      "github": 60,
+      "pdf": 9
+    }
+  },
+  "per_assignment": [
+    {
+      "assignment_id": "2772289",
+      "assignment_title": "Assignment #1 - Virtualization and Containerization",
+      "count": 26,
+      "avg_score": 3.0,
+      "median_score": 3.0,
+      "min_score": 3.0,
+      "max_score": 3.0,
+      "std_dev": 0.0,
+      "max_points": 3.0,
+      "avg_percentage": 100.0,
+      "pass_count": 26,
+      "fail_count": 0,
+      "pass_rate": 100.0,
+      "score_distribution": [
+        {
+          "range": "0-9%",
+          "count": 0
+        },
+        {
+          "range": "10-19%",
+          "count": 0
+        },
+        {
+          "range": "20-29%",
+          "count": 0
+        },
+        {
+          "range": "30-39%",
+          "count": 0
+        },
+        {
+          "range": "40-49%",
+          "count": 0
+        },
+        {
+          "range": "50-59%",
+          "count": 0
+        },
+        {
+          "range": "60-69%",
+          "count": 0
+        },
+        {
+          "range": "70-79%",
+          "count": 0
+        },
+        {
+          "range": "80-89%",
+          "count": 0
+        },
+        {
+          "range": "90-99%",
+          "count": 0
+        },
+        {
+          "range": "100-109%",
+          "count": 26
+        }
+      ]
+    },
+    {
+      "assignment_id": "2772290",
+      "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+      "count": 17,
+      "avg_score": 3.0,
+      "median_score": 3.0,
+      "min_score": 3.0,
+      "max_score": 3.0,
+      "std_dev": 0.0,
+      "max_points": 3.0,
+      "avg_percentage": 100.0,
+      "pass_count": 17,
+      "fail_count": 0,
+      "pass_rate": 100.0,
+      "score_distribution": [
+        {
+          "range": "0-9%",
+          "count": 0
+        },
+        {
+          "range": "10-19%",
+          "count": 0
+        },
+        {
+          "range": "20-29%",
+          "count": 0
+        },
+        {
+          "range": "30-39%",
+          "count": 0
+        },
+        {
+          "range": "40-49%",
+          "count": 0
+        },
+        {
+          "range": "50-59%",
+          "count": 0
+        },
+        {
+          "range": "60-69%",
+          "count": 0
+        },
+        {
+          "range": "70-79%",
+          "count": 0
+        },
+        {
+          "range": "80-89%",
+          "count": 0
+        },
+        {
+          "range": "90-99%",
+          "count": 0
+        },
+        {
+          "range": "100-109%",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "assignment_id": "2772302",
+      "assignment_title": "Hands-on L6: Spark Structured APIs",
+      "count": 26,
+      "avg_score": 1.84,
+      "median_score": 1.91,
+      "min_score": 0.95,
+      "max_score": 2.0,
+      "std_dev": 0.23,
+      "max_points": 2.0,
+      "avg_percentage": 92.1,
+      "pass_count": 25,
+      "fail_count": 1,
+      "pass_rate": 96.2,
+      "score_distribution": [
+        {
+          "range": "0-9%",
+          "count": 0
+        },
+        {
+          "range": "10-19%",
+          "count": 0
+        },
+        {
+          "range": "20-29%",
+          "count": 0
+        },
+        {
+          "range": "30-39%",
+          "count": 0
+        },
+        {
+          "range": "40-49%",
+          "count": 1
+        },
+        {
+          "range": "50-59%",
+          "count": 0
+        },
+        {
+          "range": "60-69%",
+          "count": 0
+        },
+        {
+          "range": "70-79%",
+          "count": 1
+        },
+        {
+          "range": "80-89%",
+          "count": 3
+        },
+        {
+          "range": "90-99%",
+          "count": 15
+        },
+        {
+          "range": "100-109%",
+          "count": 6
+        }
+      ]
+    }
+  ],
+  "per_student": [
+    {
+      "student": "Dalton Corriher",
+      "assignments_graded": 2,
+      "avg_percentage": 92.5,
+      "total_score": 4.7,
+      "total_max_points": 5.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.7,
+          "max_points": 2.0,
+          "percentage": 85.0
+        }
+      ]
+    },
+    {
+      "student": "Dattasai Viswas Yadati",
+      "assignments_graded": 3,
+      "avg_percentage": 97.5,
+      "total_score": 7.85,
+      "total_max_points": 8.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.85,
+          "max_points": 2.0,
+          "percentage": 92.5
+        }
+      ]
+    },
+    {
+      "student": "Eshwar Dudala",
+      "assignments_graded": 3,
+      "avg_percentage": 97.5,
+      "total_score": 7.85,
+      "total_max_points": 8.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.85,
+          "max_points": 2.0,
+          "percentage": 92.5
+        }
+      ]
+    },
+    {
+      "student": "Het Patel",
+      "assignments_graded": 3,
+      "avg_percentage": 100.0,
+      "total_score": 8.0,
+      "total_max_points": 8.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 2.0,
+          "max_points": 2.0,
+          "percentage": 100.0
+        }
+      ]
+    },
+    {
+      "student": "Himanshi Shrivas",
+      "assignments_graded": 2,
+      "avg_percentage": 97.5,
+      "total_score": 4.9,
+      "total_max_points": 5.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.9,
+          "max_points": 2.0,
+          "percentage": 95.0
+        }
+      ]
+    },
+    {
+      "student": "Jack Karegeannes",
+      "assignments_graded": 3,
+      "avg_percentage": 96.7,
+      "total_score": 7.8,
+      "total_max_points": 8.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.8,
+          "max_points": 2.0,
+          "percentage": 90.0
+        }
+      ]
+    },
+    {
+      "student": "Jacob Praskala",
+      "assignments_graded": 3,
+      "avg_percentage": 97.5,
+      "total_score": 7.85,
+      "total_max_points": 8.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.85,
+          "max_points": 2.0,
+          "percentage": 92.5
+        }
+      ]
+    },
+    {
+      "student": "Jakob Olsen",
+      "assignments_graded": 3,
+      "avg_percentage": 100.0,
+      "total_score": 8.0,
+      "total_max_points": 8.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 2.0,
+          "max_points": 2.0,
+          "percentage": 100.0
+        }
+      ]
+    },
+    {
+      "student": "Juan Rojas",
+      "assignments_graded": 2,
+      "avg_percentage": 100.0,
+      "total_score": 5.0,
+      "total_max_points": 5.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 2.0,
+          "max_points": 2.0,
+          "percentage": 100.0
+        }
+      ]
+    },
+    {
+      "student": "Kshitij Natu",
+      "assignments_graded": 3,
+      "avg_percentage": 98.7,
+      "total_score": 7.92,
+      "total_max_points": 8.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.92,
+          "max_points": 2.0,
+          "percentage": 96.0
+        }
+      ]
+    },
+    {
+      "student": "Lakshmi Deepak Chidagam",
+      "assignments_graded": 2,
+      "avg_percentage": 100.0,
+      "total_score": 5.0,
+      "total_max_points": 5.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 2.0,
+          "max_points": 2.0,
+          "percentage": 100.0
+        }
+      ]
+    },
+    {
+      "student": "Lakshmi Vaishnav Reddy Dandu",
+      "assignments_graded": 2,
+      "avg_percentage": 98.8,
+      "total_score": 4.95,
+      "total_max_points": 5.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.95,
+          "max_points": 2.0,
+          "percentage": 97.5
+        }
+      ]
+    },
+    {
+      "student": "Medha Karthik",
+      "assignments_graded": 2,
+      "avg_percentage": 100.0,
+      "total_score": 5.0,
+      "total_max_points": 5.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 2.0,
+          "max_points": 2.0,
+          "percentage": 100.0
+        }
+      ]
+    },
+    {
+      "student": "Michael Gohn",
+      "assignments_graded": 3,
+      "avg_percentage": 82.5,
+      "total_score": 6.95,
+      "total_max_points": 8.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 0.95,
+          "max_points": 2.0,
+          "percentage": 47.5
+        }
+      ]
+    },
+    {
+      "student": "Michael Thompson",
+      "assignments_graded": 3,
+      "avg_percentage": 94.7,
+      "total_score": 7.68,
+      "total_max_points": 8.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.68,
+          "max_points": 2.0,
+          "percentage": 84.0
+        }
+      ]
+    },
+    {
+      "student": "Pradhyumna Kothapalli",
+      "assignments_graded": 2,
+      "avg_percentage": 93.0,
+      "total_score": 4.72,
+      "total_max_points": 5.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.72,
+          "max_points": 2.0,
+          "percentage": 86.0
+        }
+      ]
+    },
+    {
+      "student": "Pranathi Thotli",
+      "assignments_graded": 2,
+      "avg_percentage": 100.0,
+      "total_score": 6.0,
+      "total_max_points": 6.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        }
+      ]
+    },
+    {
+      "student": "Pratik Nichit",
+      "assignments_graded": 3,
+      "avg_percentage": 100.0,
+      "total_score": 8.0,
+      "total_max_points": 8.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 2.0,
+          "max_points": 2.0,
+          "percentage": 100.0
+        }
+      ]
+    },
+    {
+      "student": "Rahul Das",
+      "assignments_graded": 3,
+      "avg_percentage": 98.7,
+      "total_score": 7.92,
+      "total_max_points": 8.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.92,
+          "max_points": 2.0,
+          "percentage": 96.0
+        }
+      ]
+    },
+    {
+      "student": "Rishitha Adapa",
+      "assignments_graded": 2,
+      "avg_percentage": 97.5,
+      "total_score": 4.9,
+      "total_max_points": 5.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.9,
+          "max_points": 2.0,
+          "percentage": 95.0
+        }
+      ]
+    },
+    {
+      "student": "Shivansh Tripathi",
+      "assignments_graded": 2,
+      "avg_percentage": 98.8,
+      "total_score": 4.95,
+      "total_max_points": 5.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.95,
+          "max_points": 2.0,
+          "percentage": 97.5
+        }
+      ]
+    },
+    {
+      "student": "Shruti Deulgaonkar",
+      "assignments_graded": 3,
+      "avg_percentage": 96.7,
+      "total_score": 7.8,
+      "total_max_points": 8.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.8,
+          "max_points": 2.0,
+          "percentage": 90.0
+        }
+      ]
+    },
+    {
+      "student": "Sunaina Agarwal",
+      "assignments_graded": 3,
+      "avg_percentage": 99.2,
+      "total_score": 7.95,
+      "total_max_points": 8.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.95,
+          "max_points": 2.0,
+          "percentage": 97.5
+        }
+      ]
+    },
+    {
+      "student": "Thea Japit",
+      "assignments_graded": 3,
+      "avg_percentage": 90.0,
+      "total_score": 7.4,
+      "total_max_points": 8.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.4,
+          "max_points": 2.0,
+          "percentage": 70.0
+        }
+      ]
+    },
+    {
+      "student": "Udaykiranreddy Kummathi",
+      "assignments_graded": 3,
+      "avg_percentage": 99.7,
+      "total_score": 7.98,
+      "total_max_points": 8.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Assignment #2 - Big Data Analytics and Hadoop",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.98,
+          "max_points": 2.0,
+          "percentage": 99.0
+        }
+      ]
+    },
+    {
+      "student": "Vamsi Aakash Samudrala",
+      "assignments_graded": 2,
+      "avg_percentage": 97.0,
+      "total_score": 4.88,
+      "total_max_points": 5.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.88,
+          "max_points": 2.0,
+          "percentage": 94.0
+        }
+      ]
+    },
+    {
+      "student": "Yamini Buyya",
+      "assignments_graded": 2,
+      "avg_percentage": 98.5,
+      "total_score": 4.94,
+      "total_max_points": 5.0,
+      "scores_by_assignment": [
+        {
+          "assignment_title": "Assignment #1 - Virtualization and Containerization",
+          "score": 3.0,
+          "max_points": 3.0,
+          "percentage": 100.0
+        },
+        {
+          "assignment_title": "Hands-on L6: Spark Structured APIs",
+          "score": 1.94,
+          "max_points": 2.0,
+          "percentage": 97.0
+        }
+      ]
+    }
+  ],
+  "feedback_patterns": {
+    "common_strengths": [
+      [
+        "**Comprehensive documentation**: Your README is exceptionally well-structured with clear tables, execution instructions, and even an errors/resolutions section",
+        1
+      ],
+      [
+        "**Clean, professional code**: Your `main.py` uses window functions appropriately, has meaningful variable names (`user_fav_genre`, `loyalty`), and includes helpful comments",
+        1
+      ],
+      [
+        "**Complete functionality**: All four analysis tasks are correctly implemented with proper output files generated",
+        1
+      ],
+      [
+        "**Smart helper function**: The `save_csv()` function elegantly handles output cleanup and single-partition writes",
+        1
+      ]
+    ],
+    "common_improvements": [
+      [
+        "**Add a comprehensive .gitignore file** - Exclude build artifacts (`target/`, `output/`, `*.class`), Python cache (`__pycache__/`, `*.pyc`), and IDE files. This is a critical best practice for professional repositories.",
+        1
+      ],
+      [
+        "**Fix syntax errors before submission** - The `test.py` file has a syntax error that would prevent it from running. Always do a final review or use automated linting tools.",
+        1
+      ],
+      [
+        "**Complete or remove incomplete code** - The `dockerintro/app.py` is missing route handlers. Either complete the Flask routes or add a comment explaining why it's a partial example.",
+        1
+      ],
+      [
+        "**Add a `.gitignore` file**: Include standard Python exclusions to keep your repository clean. A simple starter:",
+        1
+      ],
+      [
+        "**Enhance code comments**: Add brief inline comments for complex transformations, especially in Task 3 where you calculate loyalty scores. This helps others (and future you!) understand the logic quickly.",
+        1
+      ],
+      [
+        "**Consider output formatting**: While `.show()` works well for development, consider adding parameters like `.show(20, truncate=False)` consistently or writing results to files for production scenarios (which you already mentioned in your README!).",
+        1
+      ],
+      [
+        "**Add a `.gitignore` file** - Include entries for `*.csv`, `output/`, `__pycache__/`, and `*.pyc` to keep your repository clean",
+        1
+      ],
+      [
+        "**Enhance code comments** - While your code is readable, adding comments explaining *why* you chose certain approaches (e.g., why you use left join vs inner join) helps others learn from your implementation",
+        1
+      ],
+      [
+        "**Consider function modularity** - Your `main.py` could be refactored into functions (e.g., `get_favorite_genres()`, `calculate_loyalty_scores()`) to make the code more testable and reusable",
+        1
+      ],
+      [
+        "**Add inline comments for complex transformations**: While your code is clean, adding brief comments explaining the window function logic or loyalty score formula would help other developers understand the \"why\" behind the implementation.",
+        1
+      ],
+      [
+        "**Consider adding a `.gitignore`**: Including a `.gitignore` file to exclude PySpark metadata, Python cache files (`__pycache__`), and IDE settings would make the repository even more professional.",
+        1
+      ],
+      [
+        "**Explore additional edge cases**: Consider what happens with tied genres (same listen count) for a user\u2014your current implementation picks one via `row_number()`, but you might document this behavior or explore `rank()` vs `dense_rank()` alternatives.",
+        1
+      ],
+      [
+        "**Complete README Sections**: Add content to the empty sections in your README. For example:",
+        1
+      ],
+      [
+        "**Overview**: Briefly explain what this project analyzes and why",
+        1
+      ],
+      [
+        "**Dataset Description**: Describe the structure and meaning of `listening_logs.csv` and `songs_metadata.csv`",
+        1
+      ]
+    ],
+    "assignments_with_issues": {
+      "Hands-on L6: Spark Structured APIs": [
+        [
+          "**Add a comprehensive .gitignore file** - Exclude build artifacts (`target/`, `output/`, `*.class`), Python cache (`__pycache__/`, `*.pyc`), and IDE files. This is a critical best practice for professional repositories.",
+          1
+        ],
+        [
+          "**Fix syntax errors before submission** - The `test.py` file has a syntax error that would prevent it from running. Always do a final review or use automated linting tools.",
+          1
+        ],
+        [
+          "**Complete or remove incomplete code** - The `dockerintro/app.py` is missing route handlers. Either complete the Flask routes or add a comment explaining why it's a partial example.",
+          1
+        ],
+        [
+          "**Add a `.gitignore` file**: Include standard Python exclusions to keep your repository clean. A simple starter:",
+          1
+        ],
+        [
+          "**Enhance code comments**: Add brief inline comments for complex transformations, especially in Task 3 where you calculate loyalty scores. This helps others (and future you!) understand the logic quickly.",
+          1
+        ]
+      ]
+    }
+  },
+  "record_count": 69
+};
+
+        // Chart.js default configuration
+        Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+        Chart.defaults.color = '#666';
+
+        // Color palette
+        const colors = {
+            primary: '#667eea',
+            secondary: '#764ba2',
+            success: '#28a745',
+            warning: '#ffc107',
+            danger: '#dc3545',
+            info: '#17a2b8',
+            palette: [
+                '#667eea', '#764ba2', '#f093fb', '#4facfe',
+                '#43e97b', '#fa709a', '#fee140', '#30cfd0',
+                '#a8edea', '#fed6e3', '#c3cfe2', '#f8b500'
+            ]
+        };
+
+        
+        // Submission Type Pie Chart
+        const submissionTypeCtx = document.getElementById('submissionTypeChart');
+        if (submissionTypeCtx) {
+            new Chart(submissionTypeCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ["github", "pdf"],
+                    datasets: [{
+                        data: [60, 9],
+                        backgroundColor: colors.palette,
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        title: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+    
+
+        
+        // Assignment Comparison Chart
+        const assignmentCompCtx = document.getElementById('assignmentComparisonChart');
+        if (assignmentCompCtx) {
+            new Chart(assignmentCompCtx, {
+                type: 'bar',
+                data: {
+                    labels: ["Hands-on L6: Spark Structured APIs", "Assignment #1 - Virtualization and Containerization", "Assignment #2 - Big Data Analytics and Hadoop"],
+                    datasets: [
+                        {
+                            label: 'Average Score %',
+                            data: [92.1, 100.0, 100.0],
+                            backgroundColor: colors.primary,
+                            borderColor: colors.primary,
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Pass Rate %',
+                            data: [96.2, 100.0, 100.0],
+                            backgroundColor: colors.success,
+                            borderColor: colors.success,
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                display: true
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        y: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.parsed.x.toFixed(1) + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    
+
+        
+        // Distribution Chart for Assignment 0
+        const distCtx_0 = document.getElementById('distChart_0');
+        if (distCtx_0) {
+            new Chart(distCtx_0, {
+                type: 'bar',
+                data: {
+                    labels: ["0-9%", "10-19%", "20-29%", "30-39%", "40-49%", "50-59%", "60-69%", "70-79%", "80-89%", "90-99%", "100-109%"],
+                    datasets: [{
+                        label: 'Number of Students',
+                        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26],
+                        backgroundColor: ["#dc3545", "#dc3545", "#dc3545", "#dc3545", "#dc3545", "#dc3545", "#ffc107", "#ffc107", "#28a745", "#28a745", "#28a745"],
+                        borderColor: ["#dc3545", "#dc3545", "#dc3545", "#dc3545", "#dc3545", "#dc3545", "#ffc107", "#ffc107", "#28a745", "#28a745", "#28a745"],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            },
+                            grid: {
+                                display: true
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Students: ' + context.parsed.y;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Distribution Chart for Assignment 1
+        const distCtx_1 = document.getElementById('distChart_1');
+        if (distCtx_1) {
+            new Chart(distCtx_1, {
+                type: 'bar',
+                data: {
+                    labels: ["0-9%", "10-19%", "20-29%", "30-39%", "40-49%", "50-59%", "60-69%", "70-79%", "80-89%", "90-99%", "100-109%"],
+                    datasets: [{
+                        label: 'Number of Students',
+                        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17],
+                        backgroundColor: ["#dc3545", "#dc3545", "#dc3545", "#dc3545", "#dc3545", "#dc3545", "#ffc107", "#ffc107", "#28a745", "#28a745", "#28a745"],
+                        borderColor: ["#dc3545", "#dc3545", "#dc3545", "#dc3545", "#dc3545", "#dc3545", "#ffc107", "#ffc107", "#28a745", "#28a745", "#28a745"],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            },
+                            grid: {
+                                display: true
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Students: ' + context.parsed.y;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Distribution Chart for Assignment 2
+        const distCtx_2 = document.getElementById('distChart_2');
+        if (distCtx_2) {
+            new Chart(distCtx_2, {
+                type: 'bar',
+                data: {
+                    labels: ["0-9%", "10-19%", "20-29%", "30-39%", "40-49%", "50-59%", "60-69%", "70-79%", "80-89%", "90-99%", "100-109%"],
+                    datasets: [{
+                        label: 'Number of Students',
+                        data: [0, 0, 0, 0, 1, 0, 0, 1, 3, 15, 6],
+                        backgroundColor: ["#dc3545", "#dc3545", "#dc3545", "#dc3545", "#dc3545", "#dc3545", "#ffc107", "#ffc107", "#28a745", "#28a745", "#28a745"],
+                        borderColor: ["#dc3545", "#dc3545", "#dc3545", "#dc3545", "#dc3545", "#dc3545", "#ffc107", "#ffc107", "#28a745", "#28a745", "#28a745"],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            },
+                            grid: {
+                                display: true
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Students: ' + context.parsed.y;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+
+        
+        // Table sorting functionality
+        function sortTable(columnIndex) {
+            const table = document.getElementById('studentTable');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            // Determine current sort direction
+            const header = table.querySelectorAll('th')[columnIndex];
+            const currentDirection = header.dataset.sortDirection || 'asc';
+            const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+
+            // Clear all sort indicators
+            table.querySelectorAll('th').forEach(th => {
+                th.dataset.sortDirection = '';
+            });
+            header.dataset.sortDirection = newDirection;
+
+            // Sort rows
+            rows.sort((a, b) => {
+                let aValue = a.cells[columnIndex].textContent.trim();
+                let bValue = b.cells[columnIndex].textContent.trim();
+
+                // Try to parse as number
+                const aNum = parseFloat(aValue.replace('%', ''));
+                const bNum = parseFloat(bValue.replace('%', ''));
+
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    return newDirection === 'asc' ? aNum - bNum : bNum - aNum;
+                }
+
+                // String comparison
+                return newDirection === 'asc'
+                    ? aValue.localeCompare(bValue)
+                    : bValue.localeCompare(aValue);
+            });
+
+            // Re-append sorted rows
+            rows.forEach(row => tbody.appendChild(row));
+        }
+    
+    </script>
+</body>
+</html>

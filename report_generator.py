@@ -1,5 +1,5 @@
 """
-HTML Report Generator for Canvas AI Auto-Grader Analytics
+HTML Report Generator for Rubrica Analytics
 
 This module generates a self-contained HTML report with embedded Chart.js visualizations
 from the analytics data produced by analytics.generate_full_report().
@@ -35,7 +35,7 @@ def generate_html_report(report_data: Dict[str, Any], output_path: str = "analyt
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Canvas AI Auto-Grader Analytics Report</title>
+    <title>Rubrica Analytics Report</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {{
@@ -318,7 +318,7 @@ def generate_html_report(report_data: Dict[str, Any], output_path: str = "analyt
 </head>
 <body>
     <div class="header">
-        <h1>Canvas AI Auto-Grader Analytics Report</h1>
+        <h1>Rubrica Analytics Report</h1>
         <p>Generated on {_format_datetime(generated_at)}</p>
     </div>
 
@@ -868,7 +868,7 @@ def _generate_table_sorting_js() -> str:
 
 if __name__ == "__main__":
     # Example usage
-    print("report_generator.py - HTML Report Generator for Canvas AI Auto-Grader")
+    print("report_generator.py - HTML Report Generator for Rubrica")
     print("This module is meant to be imported and used with analytics data.")
     print("\nUsage:")
     print("  from report_generator import generate_html_report")

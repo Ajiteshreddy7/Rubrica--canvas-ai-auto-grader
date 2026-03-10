@@ -1,5 +1,5 @@
 """
-Canvas AI Auto-Grader CLI
+Rubrica CLI
 
 Usage:
     python cli.py run [--no-mock] [--poll-interval SECONDS] [--assignment NAME]
@@ -69,9 +69,9 @@ def _numbered_menu(items, label_fn, header):
 
 
 @click.group()
-@click.version_option(version="1.2.0", prog_name="Canvas AI Auto-Grader")
+@click.version_option(version="1.2.0", prog_name="Rubrica")
 def cli():
-    """Canvas AI Auto-Grader - Autonomous grading with AI."""
+    """Rubrica - Autonomous grading with AI."""
     pass
 
 
@@ -112,7 +112,7 @@ def grade(no_mock, regrade, assignment, all_students, yes):
     mock = not no_mock
     non_interactive = bool(assignment)  # CLI flags provided -- skip menus
 
-    console.print("[bold cyan]Canvas Auto-Grader - Interactive Grade[/bold cyan]")
+    console.print("[bold cyan]Rubrica - Interactive Grade[/bold cyan]")
     console.print(f"Mode: {'[yellow]Mock[/yellow]' if mock else '[green]AI[/green]'}\n")
     console.print("Fetching assignments from Canvas...")
 

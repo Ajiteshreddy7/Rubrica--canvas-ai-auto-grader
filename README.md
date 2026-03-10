@@ -1,4 +1,4 @@
-# Rubrica 
+# Rubrica
 
 **An autonomous grading pipeline that polls Canvas LMS, clones student GitHub repos, and grades submissions with AI -- turning hours of manual review into minutes.**
 
@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 <p align="center">
-  <img src="docs/images/demo.gif" alt="Canvas AI Auto-Grader Demo" width="800"/>
+  <img src="docs/images/demo.gif" alt="Rubrica Demo" width="800"/>
 </p>
 
 ---
@@ -103,7 +103,7 @@ The daemon runs continuously, polling Canvas at configurable intervals:
 ```
 $ python cli.py run
 
-Canvas Auto-Grading Daemon
+Rubrica
 Mode: AI
 
 >> Syncing assignments (filter: '['Hands-on', 'Assignment']')...
@@ -153,7 +153,7 @@ The `grade` command lets you pick specific assignments and students to grade in 
 ```
 $ python cli.py grade
 
-Canvas Auto-Grader - Interactive Grade
+Rubrica - Interactive Grade
 Mode: Mock
 
 Fetching assignments from Canvas...
@@ -269,7 +269,7 @@ Per-assignment rubrics are automatically pulled from Canvas and saved alongside 
 ## Project Structure
 
 ```
-canvas-ai-auto-grader/
+rubrica/
   cli.py               -- Click CLI entry point (run, status, analytics, export, retry)
   daemon_new.py         -- Async daemon loop (poll -> queue -> grade -> retry)
   canvas.py             -- Canvas API client (assignments, submissions, rubrics, grade posting)
@@ -302,8 +302,8 @@ canvas-ai-auto-grader/
 ### Installation
 
 ```bash
-git clone https://github.com/yourusername/canvas-ai-auto-grader.git
-cd canvas-ai-auto-grader
+git clone https://github.com/yourusername/rubrica.git
+cd rubrica
 
 # Create and activate a conda environment (recommended)
 conda create -n grader python=3.10 -y

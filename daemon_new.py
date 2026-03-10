@@ -345,7 +345,7 @@ async def run_daemon(mock: bool = True, assignment_names=None):
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGTERM, handle_signal)
 
-    console.print("[bold cyan]Canvas Auto-Grading Daemon[/bold cyan]")
+    console.print("[bold cyan]Rubrica[/bold cyan]")
     console.print(f"Mode: {'[yellow]Mock[/yellow]' if mock else '[green]AI[/green]'}\n")
     if assignment_names:
         console.print(f"Scoped to: {', '.join(assignment_names)}\n")
